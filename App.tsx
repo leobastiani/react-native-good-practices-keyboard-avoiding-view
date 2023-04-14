@@ -1,118 +1,161 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import useKeyboard from '@rnhooks/keyboard';
+import {atom, useAtom} from 'jotai';
+import React, {useRef} from 'react';
 import {
-  SafeAreaView,
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  StatusBar,
-  StyleSheet,
+  Switch,
   Text,
-  useColorScheme,
+  TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
-
 import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+  SafeAreaProvider,
+  initialWindowMetrics,
+  useSafeAreaFrame,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+type Behavior = 'height' | 'position' | 'padding' | undefined | false;
 
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+function getDefaultBehavior(): Behavior {
+  if (Platform.OS === 'ios') {
+    return 'padding';
+  }
+  return undefined;
+}
+
+const behaviorAtom = atom(getDefaultBehavior());
+
+function App(): JSX.Element {
+  const [behavior] = useAtom(behaviorAtom);
+
+  const bottomTextInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const dimensions = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const frame = useSafeAreaFrame();
+  const maxDeviceFrame = useRef(frame.height);
+  const [visibleWillShow] = useKeyboard({
+    useWillHide: true,
+    useWillShow: true,
+  });
+  const [visible] = useKeyboard();
+  if (frame.height > maxDeviceFrame.current) {
+    maxDeviceFrame.current = frame.height;
+  }
+  const screen = Dimensions.get('screen');
+  const window = Dimensions.get('window');
+
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View style={{flex: 1}}>
+      <KeyboardAvoidingView
+        behavior={behavior === false ? undefined : behavior}
+        enabled={behavior !== false}
+        style={{flex: 1, paddingHorizontal: 20}}
+        contentContainerStyle={{flex: 1}}>
+        <ScrollView
+          contentContainerStyle={{
+            height: maxDeviceFrame.current,
+          }}
+          ref={scrollViewRef}
+          bounces={false}>
+          <View style={{height: insets.top}} />
+          <Text>Top!</Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+            }}
+          />
+          <RowSwitch title="height" />
+          <RowSwitch title="padding" />
+          <RowSwitch title="position" />
+          <RowSwitch title={undefined} />
+          <RowSwitch title={false} />
+          <View style={{flex: 3}}>
+            <ScrollView>
+              <Text>
+                {JSON.stringify(
+                  {
+                    maxDeviceFrame: maxDeviceFrame.current,
+                    visible,
+                    visibleWillShow,
+                    metrics: Keyboard.metrics() ?? null,
+                    dimensions,
+                    frame,
+                    insets,
+                    window,
+                    screen,
+                    initialWindowMetrics,
+                  },
+                  null,
+                  2,
+                )}
+              </Text>
+            </ScrollView>
+          </View>
+          <TextInput
+            ref={bottomTextInputRef}
+            style={{
+              borderWidth: 1,
+            }}
+            onFocus={() => {
+              if (Platform.OS !== 'ios') {
+                return;
+              }
+              let listener = () => {};
+              const subscription = Keyboard.addListener('keyboardDidShow', () =>
+                listener(),
+              );
+              listener = () => {
+                requestAnimationFrame(() => {
+                  scrollViewRef.current?.scrollTo({y: frame.height});
+                });
+                subscription.remove();
+              };
+            }}
+          />
+          <View style={{flex: 1}} />
+          <Text>Bottom!</Text>
+          {visible && visibleWillShow ? null : (
+            <View style={{height: insets.bottom}} />
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+export default () => (
+  <SafeAreaProvider>
+    <App />
+  </SafeAreaProvider>
+);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
+function RowSwitch({title}: {title: Behavior}) {
+  const [behavior, setBehavior] = useAtom(behaviorAtom);
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <View
+      style={{
+        flexDirection: 'row',
+      }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+        }}>
+        <Text>{String(title)}</Text>
+      </View>
+      <View>
+        <Switch
+          onValueChange={() => setBehavior(title)}
+          value={behavior === title}
+        />
+      </View>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
-export default App;
