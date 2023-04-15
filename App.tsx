@@ -52,81 +52,77 @@ function App(): JSX.Element {
   const window = Dimensions.get('window');
 
   return (
-    <View style={{flex: 1}}>
-      <KeyboardAvoidingView
-        behavior={behavior === false ? undefined : behavior}
-        enabled={behavior !== false}
-        style={{flex: 1, paddingHorizontal: 20}}
-        contentContainerStyle={{flex: 1}}>
-        <ScrollView
-          contentContainerStyle={{
-            height: maxDeviceFrame.current,
+    <KeyboardAvoidingView
+      behavior={behavior === false ? undefined : behavior}
+      enabled={behavior !== false}
+      style={{flex: 1, paddingHorizontal: 20}}
+      contentContainerStyle={{flex: 1}}>
+      <ScrollView
+        contentContainerStyle={{
+          height: maxDeviceFrame.current,
+        }}
+        ref={scrollViewRef}
+        bounces={false}>
+        <View style={{height: insets.top}} />
+        <Text>Top!</Text>
+        <TextInput
+          style={{
+            borderWidth: 1,
           }}
-          ref={scrollViewRef}
-          bounces={false}>
-          <View style={{height: insets.top}} />
-          <Text>Top!</Text>
-          <TextInput
-            style={{
-              borderWidth: 1,
-            }}
-          />
-          <RowSwitch title="height" />
-          <RowSwitch title="padding" />
-          <RowSwitch title="position" />
-          <RowSwitch title={undefined} />
-          <RowSwitch title={false} />
-          <View style={{flex: 3}}>
-            <ScrollView>
-              <Text>
-                {JSON.stringify(
-                  {
-                    maxDeviceFrame: maxDeviceFrame.current,
-                    visible,
-                    visibleWillShow,
-                    metrics: Keyboard.metrics() ?? null,
-                    dimensions,
-                    frame,
-                    insets,
-                    window,
-                    screen,
-                    initialWindowMetrics,
-                  },
-                  null,
-                  2,
-                )}
-              </Text>
-            </ScrollView>
-          </View>
-          <TextInput
-            ref={bottomTextInputRef}
-            style={{
-              borderWidth: 1,
-            }}
-            onFocus={() => {
-              if (Platform.OS !== 'ios') {
-                return;
-              }
-              let listener = () => {};
-              const subscription = Keyboard.addListener('keyboardDidShow', () =>
-                listener(),
-              );
-              listener = () => {
-                requestAnimationFrame(() => {
-                  scrollViewRef.current?.scrollTo({y: frame.height});
-                });
-                subscription.remove();
-              };
-            }}
-          />
-          <View style={{flex: 1}} />
-          <Text>Bottom!</Text>
-          {visible && visibleWillShow ? null : (
-            <View style={{height: insets.bottom}} />
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        />
+        <RowSwitch title="height" />
+        <RowSwitch title="padding" />
+        <RowSwitch title="position" />
+        <RowSwitch title={undefined} />
+        <RowSwitch title={false} />
+        <View style={{flex: 3}}>
+          <ScrollView>
+            <Text>
+              {JSON.stringify(
+                {
+                  maxDeviceFrame: maxDeviceFrame.current,
+                  visible,
+                  visibleWillShow,
+                  metrics: Keyboard.metrics() ?? null,
+                  dimensions,
+                  frame,
+                  insets,
+                  window,
+                  screen,
+                  initialWindowMetrics,
+                },
+                null,
+                2,
+              )}
+            </Text>
+          </ScrollView>
+        </View>
+        <TextInput
+          ref={bottomTextInputRef}
+          style={{
+            borderWidth: 1,
+          }}
+          onFocus={() => {
+            if (Platform.OS !== 'ios') {
+              return;
+            }
+            let listener = () => {};
+            const subscription = Keyboard.addListener('keyboardDidShow', () =>
+              listener(),
+            );
+            listener = () => {
+              scrollViewRef.current?.scrollToEnd();
+              subscription.remove();
+            };
+          }}
+        />
+        <View style={{flex: 1}} />
+        <Text>Bottom!</Text>
+        {visible && visibleWillShow ? null : (
+          <View style={{height: insets.bottom}} />
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
